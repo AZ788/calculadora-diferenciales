@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MathJax, MathJaxContext } from 'better-react-mathjax';
@@ -9,8 +8,8 @@ import './HomePage.css';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function CalculadoraSegundoOrden() {
-  const [useKiWn, setUseKiWn] = useState(false); // Alternar entre RLC y Ki/Wn
-  const [coeficientes, setCoeficientes] = useState({ R: '', L: '', C: '', Ki: '', wn: '' });
+  const [useKiWn, setUseKiWn] = useState(false); 
+  const [coeficientes, setCoeficientes] = useState({ R: '', L: '', C: '', Ki: '', wn: '', input: '' });
   const [resultado, setResultado] = useState('');
   const [chartData, setChartData] = useState(null);
   const navigate = useNavigate(); 
@@ -22,13 +21,20 @@ function CalculadoraSegundoOrden() {
 
   const handleSwitch = () => {
     setUseKiWn(!useKiWn);
-    setCoeficientes({ R: '', L: '', C: '', Ki: '', wn: '' });
+    setCoeficientes({ R: '', L: '', C: '', Ki: '', wn: '', input: '' });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     let aValue, bValue, cValue, zeta, omega_n;
+
+    
+    const input = parseFloat(coeficientes.input);
+    if (isNaN(input) || input <= 0) {
+      setResultado('Por favor ingresa un valor válido para el voltaje o corriente de entrada (mayor que 0).');
+      return;
+    }
 
     if (useKiWn) {
       const Ki = parseFloat(coeficientes.Ki);
@@ -38,11 +44,10 @@ function CalculadoraSegundoOrden() {
         setResultado('Por favor ingresa valores válidos para Ki y ωn (mayores que 0).');
         return;
       }
-      const wn = parseFloat(coeficientes.wn);
-      const ki = parseFloat(coeficientes.Ki);
-      aValue = wn**2;
-      bValue = 2*ki * wn ;
-      cValue = wn**2;
+
+      aValue = omega_n ** 2;
+      bValue = 2 * Ki * omega_n;
+      cValue = omega_n ** 2;
       zeta = Ki;
 
     } else {
@@ -55,49 +60,46 @@ function CalculadoraSegundoOrden() {
         return;
       }
 
-      const Ki = (1 / (2 * R)) * Math.sqrt(L / C);
+      zeta = R / (2 * Math.sqrt(L / C));
       omega_n = 1 / Math.sqrt(L * C);
 
       aValue = 1 / (L * C);
-      bValue = 2*Ki * omega_n ;
+      bValue = R / L;
       cValue = 1 / (L * C);
-
-      zeta = Ki;
     }
 
-
+    
     let tipoAmortiguamiento = '';
     if (zeta > 1) {
       tipoAmortiguamiento = 'Sobreamortiguado';
     } else if (Math.abs(zeta - 1) < 0.001) {
       tipoAmortiguamiento = 'Críticamente amortiguado';
     } else if (Math.abs(zeta) < 0.001) {
-      tipoAmortiguamiento = 'No amortiguado'; // Cercano a cero
+      tipoAmortiguamiento = 'No amortiguado';
     } else if (zeta > 0 && zeta < 1) {
       tipoAmortiguamiento = 'Subamortiguado';
     }
 
-
+    
     const funcionTransferencia = `
-      F(s) = \\frac{${aValue.toFixed(4)}}{s^2 + ${bValue.toFixed(4)}s + ${cValue.toFixed(4)}}
+      H(s) = \\frac{${aValue.toFixed(4)}}{s^2 + ${bValue.toFixed(4)}s + ${cValue.toFixed(4)}}
     `;
-
 
     let resultadoTexto = `Tipo de amortiguamiento: ${tipoAmortiguamiento}\n` +
       `Frecuencia natural ωn: ${omega_n.toFixed(4)}\n` +
       `Factor de amortiguamiento ζ: ${zeta.toFixed(7)}\n\n` +
       `Función de transferencia del sistema:\n`;
 
-    if (zeta > 0.001 && zeta < 1) {
-      let wd=omega_n*(Math.sqrt(1-(zeta**2)));
-      let B = (Math.atan(Math.sqrt(1-(zeta**2))))*0.0174533;
-      let tr = (((Math.PI)-B)/wd).toFixed(2);
+
+    if (zeta > 0 && zeta < 1) {
+      let wd = omega_n * Math.sqrt(1 - (zeta ** 2));
+      let tr = ((Math.PI - Math.atan(Math.sqrt(1 - zeta ** 2))) / wd).toFixed(2);
       let tp = (Math.PI / wd).toFixed(2);
       let Mp = (Math.exp(-Math.PI * zeta / Math.sqrt(1 - zeta ** 2)) * 100).toFixed(2);
       let ts5 = (3 / (zeta * omega_n)).toFixed(4);
       let ts2 = (4 / (zeta * omega_n)).toFixed(4);
 
-      resultadoTexto += `\nMétricas del sistema (solo para subamortiguado):\n` +
+      resultadoTexto += `\nParámetros de estado transitorio :\n` +
         `Tiempo de crecimiento (t_r): ${tr} s\n` +
         `Tiempo pico (t_p): ${tp} s\n` +
         `Máximo sobreimpulso (M_p): ${Mp} %\n` +
@@ -107,16 +109,15 @@ function CalculadoraSegundoOrden() {
 
     setResultado({ texto: resultadoTexto, funcionTransferencia });
 
-    
     const time = [];
     const response = [];
-    for (let t = 0; t <= 10; t += 0.1) {
+    for (let t = 0; t <= 100; t += 0.1) {
       let stepResponse;
       if (zeta < 1) {
-        stepResponse = 1 - Math.exp(-zeta * omega_n * t) * (Math.cos(omega_n * Math.sqrt(1 - zeta ** 2) * t) +
-          (zeta / Math.sqrt(1 - zeta ** 2)) * Math.sin(omega_n * Math.sqrt(1 - zeta ** 2) * t));
+        stepResponse = input * (1 - Math.exp(-zeta * omega_n * t) * (Math.cos(omega_n * Math.sqrt(1 - zeta ** 2) * t) +
+          (zeta / Math.sqrt(1 - zeta ** 2)) * Math.sin(omega_n * Math.sqrt(1 - zeta ** 2) * t)));
       } else {
-        stepResponse = 1 - (1 + zeta * omega_n * t) * Math.exp(-zeta * omega_n * t);
+        stepResponse = input * (1 - (1 + zeta * omega_n * t) * Math.exp(-zeta * omega_n * t));
       }
       time.push(t.toFixed(2));
       response.push(stepResponse);
@@ -131,7 +132,6 @@ function CalculadoraSegundoOrden() {
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 2,
           fill: false,
-          background:true//#region ,
         },
       ],
     });
@@ -140,7 +140,7 @@ function CalculadoraSegundoOrden() {
   return (
     <MathJaxContext>
       <div className="calculadora">
-        <h2>Calculadora de Ecuación Diferencial de Segundo Orden (Sistemas Eléctricos)</h2>
+        <h2>Calculadora de Ecuación Diferencial de Segundo Orden (Circuito RLC)</h2>
         <label>
           <input type="checkbox" checked={useKiWn} onChange={handleSwitch} />
           Tengo \(K_i\) y \(\omega_n\) 
@@ -158,6 +158,7 @@ function CalculadoraSegundoOrden() {
               <label>Capacitancia (F):<input type="number" step="0.01" name="C" value={coeficientes.C} onChange={handleChange} /></label>
             </>
           )}
+          <label>Voltaje de Entrada:<input type="number" step="0.01" name="input" value={coeficientes.input} onChange={handleChange} /></label>
           <button type="submit" className="btn-calculate">Calcular</button>
         </form>
         <div className="resultado">

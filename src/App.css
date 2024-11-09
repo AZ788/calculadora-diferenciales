@@ -12,6 +12,11 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  background-color: #C5E8FE;
+  background-image: url('/public/images/fondo.avif');
+  background-repeat: no-repeat;
+  background-size:100%;
+  background-position: center;
 }
 
 h1, h2, h3 {

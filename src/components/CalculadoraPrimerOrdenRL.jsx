@@ -1,4 +1,3 @@
-// src/components/CalculadoraPrimerOrden.js
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,11 +8,11 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function CalculadoraPrimerOrden() {
-  const [useRandom, setUseRandom] = useState(false); // Alternar entre ingreso manual y valor aleatorio
+  const [useRandom, setUseRandom] = useState(false); 
   const [coeficientes, setCoeficientes] = useState({ tau: '', L: '', R: '', input: '' });
   const [resultado, setResultado] = useState('');
   const [chartData, setChartData] = useState(null);
-  const navigate = useNavigate(); // Hook para navegar entre páginas
+  const navigate = useNavigate(); 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,13 +21,13 @@ function CalculadoraPrimerOrden() {
 
   const handleSwitch = () => {
     setUseRandom(!useRandom);
-    setCoeficientes({ tau: '', L: '', R: '', input: '' }); // Reiniciar valores al cambiar método
+    setCoeficientes({ tau: '', L: '', R: '', input: '' }); 
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Si se ingresa tau
+    
     const tau = parseFloat(coeficientes.tau);
     const input = parseFloat(coeficientes.input);
 
@@ -51,7 +50,7 @@ function CalculadoraPrimerOrden() {
       L = (R * tau).toFixed(4);
       resultadoTexto = `Valor aleatorio para Resistencia (R): ${R} Ω\nValor calculado de Inductancia (L): ${L} H\nTiempo constante τ: ${tau} s\nValor de entrada: ${input}`;
     } else {
-      // Si el usuario ingresa valores manualmente
+      
       L = parseFloat(coeficientes.L);
       R = parseFloat(coeficientes.R);
 
@@ -78,15 +77,15 @@ function CalculadoraPrimerOrden() {
       }
     }
 
-    // Definir la función de transferencia
+    const rl = (R / L).toFixed(4);
     const funcionTransferencia = `
-      H(s) = \\frac{1}{τs + 1} = \\frac{1}{${tau.toFixed(4)}s + 1}
+      H(s) = \\frac{1}{τs + 1} = \\frac{${rl}}{s + ${rl}}
     `;
 
-    // Generar datos para la gráfica de respuesta al escalón
+    
     const time = [];
     const response = [];
-    for (let t = 0; t <= 10; t += 0.1) {
+    for (let t = 0; t <= 100; t += 0.1) {
       const stepResponse = input * (1 - Math.exp(-t / tau));
       time.push(t.toFixed(2));
       response.push(stepResponse);
@@ -96,9 +95,9 @@ function CalculadoraPrimerOrden() {
       labels: time,
       datasets: [
         {
-          label: 'Respuesta al Escalón',
+          label: 'Señal de salida',
           data: response,
-          borderColor: 'rgba(75, 192, 192, 1)',
+          borderColor: '#286E81',
           borderWidth: 2,
           fill: false,
         },
@@ -111,7 +110,7 @@ function CalculadoraPrimerOrden() {
   return (
     <MathJaxContext>
       <div className="calculadora">
-        <h2>Calculadora de Ecuación Diferencial de Primer Orden</h2>
+        <h2>Calculadora de Ecuación Diferencial de Primer Orden Circuito RL</h2>
         <label>
           <input type="checkbox" checked={useRandom} onChange={handleSwitch} />
           Usar valor aleatorio para R
@@ -124,7 +123,7 @@ function CalculadoraPrimerOrden() {
               <label>Resistencia (R):<input type="number" step="0.01" name="R" value={coeficientes.R} onChange={handleChange} /></label>
             </>
           )}
-          <label>Voltaje o Corriente de Entrada:<input type="number" step="0.01" name="input" value={coeficientes.input} onChange={handleChange} /></label>
+          <label>Corriente de Entrada:<input type="number" step="0.01" name="input" value={coeficientes.input} onChange={handleChange} /></label>
           <button type="submit" className="btn-calculate">Calcular</button>
         </form>
         <div className="resultado">
@@ -139,7 +138,7 @@ function CalculadoraPrimerOrden() {
         </div>
         {chartData && (
           <div className="grafica">
-            <h3>Gráfica de Respuesta al Escalón</h3>
+            <h3>Gráfica de Respuesta a señal de salida</h3>
             <Line data={chartData} options={{ responsive: true }} />
           </div>
         )}
